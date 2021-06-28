@@ -1,185 +1,163 @@
-import { elements } from './base';
-import { Fraction } from 'fractional';
+import View from './View';
+import icons from 'url:../../img/icons.svg'; //loading the icons for parcel to convert them later
+import {Fraction} from 'fractional';
 
+class RecipeView extends View {
+    _parentContainer = document.querySelector('.recipe');
+    _isBookmarked;
+    _servingButtons;
+    _errorMessage = "Can't find recipe, please try another one!"
 
-export const clearRecipe = () => {
-    elements.recipe.innerHTML = '';
-}; 
-
-
-
-// Function to format string
-const formatCount = count => {
-    if (count) {
-        // Return string to specified precision
-        let newCount = count.toPrecision(2);
-        
-        // Use destructuring to create two variables at once (integer and decimal). Split the string up by the decimal point. Create new array from strings using map to convert the strings back into numbers.
-        let [int, dec] = newCount.split('.').map(el => parseInt(el, 10));
-       
-        const increment = 2.5;
-        const threshold = 1.25;
-        let remain, newDec;
-
-        // If decimal does not round to quarter increments
-        if (dec % increment !== 0) { 
-            // Find difference between value and increment
-            remain = dec % increment;  
-    
-            if (remain >= threshold) { // Round Up
-               newDec = dec - remain;
-               newDec += increment;
-            } else { // Round down
-                newDec = (dec - remain) * 10; 
-            }
-        
-        } else {
-            // If dec already equal to quarter increment, newDec equal to original dec value 
-            newDec = dec;
-        }
-
-        // If there is no decimal, such as 2, or decimal equals 0, then simply return the original count and leave the function.
-        if (!newDec) {
-            newCount = int;
-            return newCount;
-        }
-
-        // Add int and newDec values together and convert back to number
-        newCount = parseFloat(`${int}.${newDec}`);
-        
-        
-        if (int === 0) {
-            const fr = new Fraction(newCount);
-            return `${fr.numerator}/${fr.denominator}`;
-        } else {
-            const fr = new Fraction(newCount - int);
-            return `${int} ${fr.numerator}/${fr.denominator}`;
-        }
+    render(data) {
+        this._data = data;
+        const html = this._generateMarkup();
+        this._clear();
+        this._parentContainer.insertAdjacentHTML('beforeend', html);
     }
-    return '?';
-};
+    update(data) {
+        this._data = data;
+        this._data.servings === 1 ? document.querySelector('.btn--decrease-servings').classList.add('hidden') : document.querySelector('.btn--decrease-servings').classList.remove('hidden');
+        const newHtml = this._generateMarkup();
 
+        const newDOM = document.createRange().createContextualFragment(newHtml);
+        const newMarkup = Array.from(newDOM.querySelectorAll('*'));
+        const oldMarkup = Array.from(this._parentContainer.querySelectorAll('*'));
 
+        newMarkup.forEach((el, i) => {
+            const currentOldElement = oldMarkup[i];
 
-const createIngredient = ingredient => `
-    <li class="recipe__item">
-        <input type="checkbox" class="recipe__icon" checked>
-        <div class="recipe__count">${formatCount(ingredient.count)}</div>
-        <div class="recipe__ingredient">
-            <span class="recipe__unit">${ingredient.unit}</span>
-            ${ingredient.ingredient}
-        </div>
-    </li>
-`;
-
-
-
-export const renderRecipe = (recipe, isLiked) => {
-    const markup = `
-        <figure class="recipe__fig">
-            <img src="${recipe.img}" alt="${recipe.title}" class="recipe__img">
+            if(!el.isEqualNode(currentOldElement) && el.firstChild?.nodeValue.trim() !== '')
+                currentOldElement.textContent = el.textContent;
+        })
+    }
+    addHandlerRender(handler) {
+        ['hashchange', 'load'].forEach(event => window.addEventListener(event, handler));
+    }
+    addHandlerServing(handler) {
+        this._servingButtons = document.querySelector('.recipe__info-buttons');
+        this._servingButtons.addEventListener('click', function(e) {
+            //Guard clause if the button doesn't exist or is removed due to serving count
+            if (!e.target.closest('.btn--tiny') || e.target.closest('.btn--tiny').classList.contains('hidden')) return;
+            //designate the action and call the handler
+            if (e.target.closest('.btn--tiny').classList.contains('btn--increase-servings')) {
+                handler('increase', this._data);
+            } else {
+                handler('decrease', this._data);
+            }
+        }.bind(this))
+    }
+    addHandlerBookmark(handler) {
+        const bookmarkBtn = document.querySelector('.btn--round');
+        bookmarkBtn.addEventListener('click', function() {
+            handler(this._data);
+        }.bind(this))
+    }
+    addHandlerDelete(handler) {
+        const deleteBtn = document.querySelector('.btn--delete');
+        deleteBtn.addEventListener('click', function() {
+            handler(this._data);
+        }.bind(this))
+    }
+    _generateMarkup() {
+        return `
+            <figure class="recipe__fig">
+            <img src="${this._data.imageUrl}" alt="${this._data.title}" class="recipe__img" />
             <h1 class="recipe__title">
-                <span>${recipe.title}</span>
+                <span>${this._data.title}</span>
             </h1>
-        </figure>
-        <div class="recipe__details">
-            <div class="recipe__info">
-                <svg class="recipe__info-icon">
-                    <use href="img/icons.svg#icon-stopwatch"></use>
-                </svg>
-                <span class="recipe__info-data recipe__info-data--minutes">${recipe.time}</span>
-                <span class="recipe__info-text"> minutes</span>
-            </div>
-            <div class="recipe__info">
-                <svg class="recipe__info-icon">
-                    <use href="img/icons.svg#icon-man"></use>
-                </svg>
-                <span class="recipe__info-data recipe__info-data--people">${recipe.servings}</span>
-                <span class="recipe__info-text"> servings</span>
-
-                <div class="recipe__info-buttons">
-                    <button class="btn-tiny btn-decrease">
-                        <svg>
-                            <use href="img/icons.svg#icon-circle-with-minus"></use>
+            </figure>
+        
+            <div class="recipe__details">
+                <div style="display: flex;">
+                    <div class="recipe__info">
+                        <svg class="recipe__info-icon">
+                        <use href="${icons}#icon-clock"></use>
                         </svg>
-                    </button>
-                    <button class="btn-tiny btn-increase">
-                        <svg>
-                            <use href="img/icons.svg#icon-circle-with-plus"></use>
+                        <span class="recipe__info-data recipe__info-data--minutes">${this._data.cookingTime}</span>
+                        <span class="recipe__info-text">minutes</span>
+                    </div>
+                    <div class="recipe__info">
+                        <svg class="recipe__info-icon">
+                            <use href="${icons}#icon-users"></use>
                         </svg>
-                    </button>
+                        <span class="recipe__info-data recipe__info-data--people">${this._data.servings}</span>
+                        <span class="recipe__info-text">servings</span>
+                        <div class="recipe__info-buttons">
+                            <button class="btn--tiny btn--decrease-servings${this._data.servings === 1 ? ' hidden' : ''}">
+                                <svg>
+                                <use href="${icons}#icon-minus-circle"></use>
+                                </svg>
+                            </button>
+                            <button class="btn--tiny btn--increase-servings">
+                                <svg>
+                                <use href="${icons}#icon-plus-circle"></use>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
                 </div>
-
+                <div style="display: flex;">
+                    ${this._data.user ? 
+                    `<div class="recipe__user-generated">
+                        <svg>
+                        <use href="${icons}#icon-user"></use>
+                        </svg>
+                    </div>
+                    ` : ''}
+                    ${this._data.user ? `
+                    <button class="btn--round btn--delete">
+                        <svg>
+                            <use href="${icons}#icon-minus-circle"></use>
+                        </svg>
+                    </button>
+                    ` : `
+                    <button class="btn--round">
+                        <svg>
+                            <use href="${icons}#icon-bookmark${this._data.isBookmarked ? '-fill' : ''}"></use>
+                        </svg>
+                    </button>
+                    `}
+                </div>
             </div>
-            <button class="recipe__love">
-                <svg class="header__likes">
-                    <use href="img/icons.svg#icon-heart${isLiked ? '' : '-outlined'}"></use>
-                </svg>
-            </button>
-        </div>
-
-
-
-        <div class="recipe__ingredients">
+        
+            <div class="recipe__ingredients">
+            <h2 class="heading--2">Recipe ingredients</h2>
             <ul class="recipe__ingredient-list">
-                ${recipe.ingredients.map(el => createIngredient(el)).join('')}
+            ${this._data.ingredients.map(ing => {
+                return `<li class="recipe__ingredient">
+                        <svg class="recipe__icon">
+                            <use href="${icons}#icon-check"></use>
+                        </svg>
+                        <div class="recipe__quantity">${ing?.quantity ? new Fraction(ing.quantity).toString() : ''}</div>
+                        <div class="recipe__description">
+                            <span class="recipe__unit">${ing?.unit}</span>
+                            ${ing?.description}
+                        </div>
+                        </li>`
+            }).join('')}
             </ul>
-
-            <button class="btn-small recipe__btn recipe__btn--add">
-                <svg class="search__icon">
-                    <use href="img/icons.svg#icon-shopping-cart"></use>
-                </svg>
-                <span>Add to shopping list</span>
-            </button>
-        </div>
-
-        <div class="recipe__directions">
-            <h2 class="heading-2">How to cook it</h2>
+            </div>
+        
+            <div class="recipe__directions">
+            <h2 class="heading--2">How to cook it</h2>
             <p class="recipe__directions-text">
                 This recipe was carefully designed and tested by
-                <span class="recipe__by">${recipe.author}</span>. Please check out directions at their website.
+                <span class="recipe__publisher">${this._data.publisher}</span>. Please check out
+                directions at their website.
             </p>
-            <a class="btn-small recipe__btn" href="${recipe.url}" target="_blank">
+            <a
+                class="btn--small recipe__btn"
+                href="${this._data.sourceUrl}"
+                target="_blank"
+            >
                 <span>Directions</span>
                 <svg class="search__icon">
-                    <use href="img/icons.svg#icon-triangle-right"></use>
+                <use href="${icons}#icon-arrow-right"></use>
                 </svg>
-
             </a>
-        </div>
-    `;
-
-    elements.recipe.insertAdjacentHTML('afterbegin', markup);
+            </div>
+        `
+    }
 };
 
-
-
-export const updateServingsIngredients = recipe => {
-    // Update servings
-    document.querySelector('.recipe__info-data--people').textContent = recipe.servings;
-
-    // Update counts
-    // Create an array from all the classes matching .recipe__count
-    const countElements = Array.from(document.querySelectorAll('.recipe__count'));
-    // Loop over all the classes and change the text content of each element. Replace the text content with the updated ingredient amounts at the same index number
-    countElements.forEach((el, i) => {
-        el.textContent = formatCount(recipe.ingredients[i].count);
-    });
-};
-
-
-
-export const checkTickedIngredients = () => {
-    
-    // Convert node list into array
-    const checkBoxes = Array.from(document.querySelectorAll('.recipe__icon'));
-    const isChecked = [];
-
-    // Loop over array to see if checked property is true or false
-    checkBoxes.forEach(box => {
-        isChecked.push(box.checked);
-    });
-    
-    // Return array containing true and false values
-    return isChecked;
-};
+export default new RecipeView();

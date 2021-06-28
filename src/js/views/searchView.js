@@ -1,124 +1,53 @@
-import { elements } from './base';
+import icons from 'url:../../img/icons.svg'; //loading the icons for parcel to convert them later
+import View from './View';
 
+class searchView extends View {
+  _parentContainer = document.querySelector('.results');
+  _errorMessage = `Can't find recipes for that query, please another.`
 
-export const getInput = () => elements.searchInput.value;
-
-
-
-export const clearInput = () => {
-    elements.searchInput.value = '';
-};
-
-
-
-export const clearResults = () => {
-    elements.searchResList.innerHTML = '';
-    elements.searchResPages.innerHTML= '';
-};
-
-
-
-export const highlightSelected = id => {
-    // Select all elements with the class .results__link and convert them into an array
-    const resultsArr = Array.from(document.querySelectorAll('.results__link'));
-    
-    // Loop over array and remove the active class
-    resultsArr.forEach(el => {
-        el.classList.remove('results__link--active');
+  render(data) {
+    this._data = data;
+    this._clear();
+    this._data.forEach(recipe => {
+      this._parentContainer.insertAdjacentHTML('beforeend', this._generateMarkup(recipe));
     });
-    // Select the .results__link class which has a href id equal to the id that's passed in, and add the active class to the element
-    document.querySelector(`.results__link[href*="${id}"]`).classList.add('results__link--active');
-};
+    this._parentContainer.addEventListener('click', function(e) {
+      const allElements = document.querySelectorAll('.preview__link');
+      allElements.forEach(item => item.classList.remove(`preview__link--active`));
+      e.target.closest(`.preview__link`).classList.add(`preview__link--active`);
+    });
+  }
 
-
-
-export const limitRecipeTitle = (title, limit = 17) => {
-    const newTitle = [];
-    if (title.length > limit) {
-        // Split up title into array. Each item in the array will be each word
-        title.split(' ').reduce((acc, cur) => {
-            // If acc plus each item in array is less than or equal to limit, then push that item into the new array
-            if(acc + cur.length <= limit) {
-                newTitle.push(cur)
-            }
-            // Return the new acc amount
-            return acc + cur.length;
-        }, 0)
-        // Convert array back into string and return the result
-        return `${newTitle.join(' ')} ...`;
-    }
-    // Return original title if length is less than limit
-    return title;
-};
-
-
-
-const renderRecipe = recipe => {
-    const markup = `
-    <li>
-        <a class="results__link" href="#${recipe.recipe_id}">
-            <figure class="results__fig">
-                <img src="${recipe.image_url}" alt="${recipe.title}">
-            </figure>
-            <div class="results__data">
-                <h4 class="results__name">${limitRecipeTitle(recipe.title)}</h4>
-                <p class="results__author">${recipe.publisher}</p>
-            </div>
+  addHandlerRender(handler) {
+    const search = document.querySelector('.search');
+    search.addEventListener('submit', function(e) {
+      e.preventDefault();
+      let query = e.target.querySelector('.search__field').value;
+      handler(query);
+      document.querySelector('.search__field').value = ''
+    })
+  }
+  _generateMarkup(recipe) {
+    return `
+      <li class="preview">
+        <a class="preview__link" href="#${recipe.id}">
+          <figure class="preview__fig">
+            <img src="${recipe.imageUrl}" alt="${recipe.title}" />
+          </figure>
+          <div class="preview__data">
+            <h4 class="preview__title">${recipe.title}</h4>
+            <p class="preview__publisher">${recipe.publisher}</p>
+            ${recipe.user ? `<div class="preview__user-generated">
+                              <svg>
+                                <use href="${icons}#icon-user"></use>
+                              </svg>
+                            </div>
+          ` : ''}
+          </div>
         </a>
-    </li>
-    `;
-    elements.searchResList.insertAdjacentHTML('beforeend', markup);
+      </li>
+    `
+  }
 };
 
-
-
-const createButton = (page, type) => `
-    
-    <button class="btn-inline results__btn--${type}" data-goto=${type === 'prev' ? page - 1 : page + 1}>
-        <span>Page ${type === 'prev' ? page - 1 : page + 1}</span>
-        <svg class="search__icon">
-            <use href="img/icons.svg#icon-triangle-${type === 'prev' ? 'left' : 'right'}"></use>
-        </svg>
-    </button>
-`;
-
-
-
-// Render pagination page buttons
-const renderButtons = (page, numResults, resPerPage) => {
-    
-    const pages = Math.ceil(numResults / resPerPage);
-
-    let button;
-    if (page === 1 && pages > 1) {
-        // Button to go to next page
-        button = createButton(page, 'next');
-    
-    } else if (page < pages) {
-        // Both buttons
-        button = `
-            ${createButton(page, 'prev')}
-            ${createButton(page, 'next')}
-        `;
-    
-    } else if (page === pages && pages > 1) {
-        // Button to go to previous page
-        button = createButton(page, 'prev');
-    } 
-
-    elements.searchResPages.insertAdjacentHTML('afterbegin', button);
-};
-
-
-
-export const renderResults = (recipes, page = 1, resPerPage = 10) => {
-    // Render Results
-    const start = (page - 1) * resPerPage;
-    const end = page * resPerPage;
-
-    // Return shallow copy of recipes array, using start and end variables to determine the start and end points. 
-    recipes.slice(start, end).forEach(renderRecipe);
-
-    // Render pagination buttons. 
-    renderButtons(page, recipes.length, resPerPage);
-};
+export default new searchView();
