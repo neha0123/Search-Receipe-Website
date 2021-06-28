@@ -7,7 +7,7 @@ The app is deployed and available to use -
 # Features Available
 1.Query an ingredient to recieve a list of recipes containing that ingredient.  </br>
 2.Easily bookmark or edit the servings of the selected recipe.  </br>
-3.Create your own recipes and store them as user recipes.  <//br>
+3.Create your own recipes and store them as user recipes.</br>
 4.Remove bookmarks or delete user recipes.</br>
 5.LocalStorage keeps the data when users exit the app.</br>
 
