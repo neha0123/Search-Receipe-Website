@@ -4,7 +4,7 @@ Forkify is a vanilla JavaScript application that interacts with the food2fork AP
 
 The app is deployed and available to use -
 
-#Features Available
+# Features Available
 -Query an ingredient to recieve a list of recipes containing that ingredient.
 -Easily bookmark or edit the servings of the selected recipe.
 -Create your own recipes and store them as user recipes.
